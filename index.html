@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PR Review Request</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: #f3f2f1;
+      color: #323130;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+
+    .card {
+      background: #ffffff;
+      border-radius: 8px;
+      padding: 32px;
+      width: 100%;
+      max-width: 560px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+    }
+
+    h1 {
+      font-size: 1.4rem;
+      margin-bottom: 24px;
+      color: #6264a7;
+    }
+
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      margin-bottom: 16px;
+    }
+
+    label {
+      font-weight: 600;
+      font-size: 0.9rem;
+    }
+
+    input, textarea {
+      padding: 10px 12px;
+      border: 1px solid #c8c6c4;
+      border-radius: 4px;
+      font-size: 0.95rem;
+      font-family: inherit;
+      transition: border-color 0.2s;
+      width: 100%;
+    }
+
+    input:focus, textarea:focus {
+      outline: none;
+      border-color: #6264a7;
+    }
+
+    button {
+      width: 100%;
+      padding: 10px 20px;
+      background: #6264a7;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      font-size: 1rem;
+      cursor: pointer;
+      margin-top: 8px;
+      transition: background 0.2s;
+    }
+
+    button:hover:not(:disabled) { background: #4f52a0; }
+    button:disabled { opacity: 0.6; cursor: not-allowed; }
+
+    .msg {
+      margin-top: 14px;
+      padding: 10px 14px;
+      border-radius: 4px;
+      font-size: 0.9rem;
+      display: none;
+    }
+    .msg.success { background: #dff6dd; color: #107c10; display: block; }
+    .msg.error   { background: #fde7e9; color: #a4262c; display: block; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>🔍 PR Review Request</h1>
+    <form id="prForm">
+      <div class="field">
+        <label for="subject">Subject</label>
+        <input id="subject" type="text" placeholder="Brief title for the review request" required />
+      </div>
+      <div class="field">
+        <label for="prLink">PR Link</label>
+        <input id="prLink" type="url" placeholder="https://github.com/org/repo/pull/123" required />
+      </div>
+      <div class="field">
+        <label for="description">Description</label>
+        <textarea id="description" rows="4" placeholder="What should reviewers focus on?" required></textarea>
+      </div>
+      <button type="submit" id="submitBtn">Send to Teams</button>
+      <div class="msg" id="statusMsg"></div>
+    </form>
+  </div>
+
+  <script>
+    const WEBHOOK_URL = 'https://default176bdcf02ce34610962ad59c1f5ce9.f6.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/a59d77566818443899c05b86e52de01c/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=bPlIBwdXBb5DvA6wx0G7RX5V7-nEINrqogRhKv9NmBc'
+
+    document.getElementById('prForm').addEventListener('submit', async (e) => {
+      e.preventDefault()
+
+      const subject     = document.getElementById('subject').value
+      const prLink      = document.getElementById('prLink').value
+      const description = document.getElementById('description').value
+      const btn         = document.getElementById('submitBtn')
+      const msg         = document.getElementById('statusMsg')
+
+      btn.disabled = true
+      btn.textContent = 'Sending…'
+      msg.className = 'msg'
+
+      const payload = {
+        type: 'message',
+        attachments: [{
+          contentType: 'application/vnd.microsoft.card.adaptive',
+          content: {
+            $schema: 'http://adaptivecards.io/schemas/adaptive-card.json',
+            type: 'AdaptiveCard',
+            version: '1.4',
+            body: [
+              { type: 'TextBlock', text: `📋 PR Review Request: ${subject}`, weight: 'Bolder', size: 'Medium', wrap: true },
+              { type: 'TextBlock', text: description, wrap: true },
+              { type: 'TextBlock', text: `🔗 [View PR](${prLink})`, wrap: true }
+            ]
+          }
+        }]
+      }
+
+      try {
+        const res = await fetch(WEBHOOK_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        })
+        if (!res.ok) throw new Error(`HTTP ${res.status}`)
+        msg.className = 'msg success'
+        msg.textContent = '✅ Posted to Teams channel!'
+        e.target.reset()
+      } catch {
+        msg.className = 'msg error'
+        msg.textContent = '❌ Failed to post. Check your webhook URL or CORS settings.'
+      } finally {
+        btn.disabled = false
+        btn.textContent = 'Send to Teams'
+      }
+    })
+  </script>
+</body>
+</html>
